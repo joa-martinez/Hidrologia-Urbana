@@ -4,7 +4,14 @@ App para plantear el Balance Hidrológico Anual de una cuenca urbana (Cap. 2 de
 *Hidrología e Hidráulica en Territorios Urbanizados*) y comparar casos: antes de
 urbanizar, urbanizada con red cloacal, y urbanizada con pozos absorbentes.
 
-## Cómo correrla
+## Cómo usarla
+
+Online, sin instalar nada: **https://balance-hidrologico.streamlit.app/**
+
+Si nadie la usó en los últimos días, la app está dormida: tocar el botón para
+despertarla y esperar alrededor de un minuto.
+
+## Cómo correrla en tu compu
 
 Doble clic en `correr.sh` (Linux/macOS) o en `correr.bat` (Windows). La primera vez
 crean el entorno e instalan las dependencias solas; después abren la app en
