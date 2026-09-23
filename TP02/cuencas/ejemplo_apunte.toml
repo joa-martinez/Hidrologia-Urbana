@@ -1,0 +1,88 @@
+# Balance hidrológico anual — una cuenca comparada en distintos casos.
+# Valores tomados del esquema del apunte (Cap. 2, Fig. 2.7b), con el área supuesta.
+# Ecuación (2.8): P + S = E + ΔF + ΔG.
+# Unidades admitidas para el valor directo: valor_mm, valor_hm3, valor_m3, valor_l_s.
+# Una componente ausente vale 0. Valor directo o método, nunca los dos.
+#
+# Referencia para estimar (Tucci y Genz, 1995, en Cap. 2):
+#   antes de urbanizar   ET 40 % de P, escurrimiento superficial 10 %, subterránea 50 %
+#   después de urbanizar ET 25 %, escurrimiento 53 % (13 % lotes + 40 % conductos), subterránea 32 %
+
+# --- Cuenca: lo que no cambia entre casos ---
+nombre = "Cuenca del apunte"
+area_km2 = 12.5
+# La ET es la más difícil de estimar: se despeja del balance, en todos los casos.
+# "ninguno" = no despejar nada y mostrar el residuo.
+cierre = "evapotranspiracion"
+
+[precipitacion]
+valor_mm = 743
+
+# Solo entrada: no se sabe por dónde sale, así que no se suma a ningún escurrimiento
+[aporte_aguas_arriba]
+valor_mm = 108
+
+# 300 L/hab/día × 60388 hab ≈ 529 mm/año sobre la cuenca. Solo la usa el estado post.
+[agua_potable]
+metodo = "dotacion"
+dotacion_l_hab_dia = 300
+poblacion = 60388
+
+# --- Estado de urbanización pre ---
+[estados.pre]
+
+[estados.pre.escurrimiento_superficial]
+metodo = "coeficiente"
+coeficiente = 0.1
+
+[estados.pre.escurrimiento_subsuperficial]
+metodo = "fraccion_precipitacion"
+fraccion = 0.3
+
+[estados.pre.escurrimiento_subterraneo]
+metodo = "fraccion_precipitacion"
+fraccion = 0.2
+
+[estados.pre.almacenamiento_humedad]
+valor_mm = 3
+
+# --- Estado de urbanización post ---
+# Reparto de la provisión, igual con red y con pozos:
+#   pérdidas de red (Tucci y Genz: entre 0.10 y 0.50 en redes reales) → se infiltran
+#   efluente cloacal: 456 / 529 del esquema → a planta (red) o al subsuelo (pozos)
+#   lo que queda es uso exterior (riego, limpieza) y va dentro de la ET
+[estados.post]
+fraccion_perdidas_red = 0
+fraccion_efluente_cloacal = 0.862
+
+[estados.post.escurrimiento_superficial]
+metodo = "coeficiente_ponderado"
+fraccion_impermeable = 0.35
+coeficiente_impermeable = 0.55
+coeficiente_permeable = 0.05
+
+# Parte base, solo de la lluvia: ≈ 367 mm del esquema. Lo que se infiltra de la
+# provisión (pérdidas y pozos) se le suma en cada caso.
+[estados.post.escurrimiento_subsuperficial]
+metodo = "fraccion_precipitacion"
+fraccion = 0.494
+
+[estados.post.almacenamiento_humedad]
+valor_mm = 3
+
+# --- Casos: cada uno elige su estado y su saneamiento ---
+
+[[casos]]
+nombre = "Pre-urbanización"
+estado = "pre"
+saneamiento = "ninguno"
+
+[[casos]]
+nombre = "Post-urbanización con red cloacal"
+estado = "post"
+saneamiento = "red"
+
+[[casos]]
+nombre = "Post-urbanización con pozos absorbentes"
+estado = "post"
+saneamiento = "pozos"
