@@ -48,6 +48,11 @@ COMPONENTES: tuple[DefinicionComponente, ...] = (
     ),
     # No se carga: sale del Reparto de la provisión cuando el Saneamiento es la red.
     DefinicionComponente("descarga_planta", "Descarga de planta cloacal", "salida", "Descarga cloacal"),
+    # Tampoco se carga: es el efluente cuando el Saneamiento son pozos. Se infiltra y
+    # recarga el acuífero, así que ocupa el lugar de la descarga de planta.
+    DefinicionComponente(
+        "vertido_pozos", "Vertido a pozos absorbentes", "salida", "Pozos absorbentes"
+    ),
     DefinicionComponente(
         "almacenamiento_humedad", "Almacenamiento en humedad del suelo", "almacenamiento",
         "ΔS humedad",
@@ -56,7 +61,8 @@ COMPONENTES: tuple[DefinicionComponente, ...] = (
 
 POR_CLAVE = {d.clave: d for d in COMPONENTES}
 
-# Qué componentes se cargan en cada nivel. La descarga de planta no se carga en ninguno.
+# Qué componentes se cargan en cada nivel. La descarga de planta y el vertido a pozos
+# no se cargan en ninguno: salen del reparto de la provisión.
 COMPONENTES_CUENCA = ("precipitacion", "agua_potable", "aporte_aguas_arriba")
 COMPONENTES_ESTADO = (
     "evapotranspiracion",
@@ -66,21 +72,16 @@ COMPONENTES_ESTADO = (
     "almacenamiento_humedad",
 )
 # Solo se puede despejar algo que dependa del Estado: lo de la Cuenca es dato
-# compartido y la descarga de planta sale del reparto.
+# compartido y la descarga de planta y el vertido a pozos salen del reparto.
 CIERRES_POSIBLES = COMPONENTES_ESTADO
+
+# Salidas que no se cargan: son el efluente cloacal, según el Saneamiento.
+DEL_REPARTO = ("descarga_planta", "vertido_pozos")
 
 # Componentes de versiones anteriores del modelo, con el nombre nuevo o su reemplazo.
 RENOMBRADAS = {
     "escurrimiento_directo": "escurrimiento_superficial",
     "evaporacion_sistema": "evapotranspiracion (ahora va todo junto en una sola componente)",
-    "vertido_pozos": (
-        "fraccion_efluente_cloacal del estado post (el vertido a pozos ya no se carga: "
-        "sale del reparto de la provisión y va al escurrimiento subsuperficial)"
-    ),
-    "descarga_planta": (
-        "fraccion_efluente_cloacal del estado post (la descarga de planta ya no se carga: "
-        "sale del reparto de la provisión)"
-    ),
 }
 
 Saneamiento = Literal["red", "pozos", "ninguno"]
@@ -117,6 +118,11 @@ def _validar_claves(componentes: dict, admitidas: tuple[str, ...], donde: str) -
     desconocidas = set(componentes) - set(admitidas)
     for vieja in sorted(desconocidas & set(RENOMBRADAS)):
         raise ErrorDeCaso(f"«{vieja}» ahora es «{RENOMBRADAS[vieja]}».")
+    for clave in sorted(desconocidas & set(DEL_REPARTO)):
+        raise ErrorDeCaso(
+            f"«{clave}» ya no se carga: sale de fraccion_efluente_cloacal del estado post "
+            "(reparto de la provisión)."
+        )
     for clave in sorted(desconocidas & set(POR_CLAVE)):
         raise ErrorDeCaso(f"«{clave}» no se carga en {donde}.")
     if desconocidas:
@@ -241,7 +247,7 @@ class Resultado:
     caso: Caso
     area_km2: float
     valores: dict[str, float]
-    # Lo que se infiltra dentro de la cuenca y sale por el escurrimiento subsuperficial.
+    # Pérdidas de red: se infiltran dentro de la cuenca y salen por el subsuperficial.
     flujos_internos: dict[str, float]
     clave_cierre: str | None
     residuo_mm: float
@@ -358,9 +364,10 @@ def resolver(cuenca: Cuenca, caso: Caso | str) -> Resultado:
         else:
             valores[clave] = 0.0
 
-    # Reparto de la provisión. Las pérdidas y, con pozos, el efluente se infiltran y
-    # salen por el escurrimiento subsuperficial; con red, el efluente sale por la planta.
-    # El uso exterior no se asigna: queda dentro de la ET cuando es el cierre.
+    # Reparto de la provisión. Las pérdidas se infiltran y salen por el escurrimiento
+    # subsuperficial. El efluente sale por la planta con red, o por los pozos, que
+    # recargan el acuífero. El uso exterior no se asigna: queda dentro de la ET cuando
+    # es el cierre.
     internos: dict[str, float] = {}
     provision = valores["agua_potable"]
     reparto = estado.reparto
@@ -371,8 +378,8 @@ def resolver(cuenca: Cuenca, caso: Caso | str) -> Resultado:
             internos["perdidas_red"] = perdidas
         if caso.saneamiento == "red":
             valores["descarga_planta"] = efluente
-        elif caso.saneamiento == "pozos" and efluente:
-            internos["vertido_pozos"] = efluente
+        elif caso.saneamiento == "pozos":
+            valores["vertido_pozos"] = efluente
     # Si el subsuperficial es el cierre, lo infiltrado ya queda contemplado al despejarlo.
     if cuenca.cierre != "escurrimiento_subsuperficial":
         valores["escurrimiento_subsuperficial"] += sum(internos.values())

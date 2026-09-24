@@ -76,9 +76,9 @@ suele ser la componente de cierre, por ser la más difícil de estimar. El repar
 provisión funciona así:
 
 - las **pérdidas de red** se infiltran y salen por el escurrimiento subsuperficial;
-- el **efluente cloacal** sale por la **descarga de planta** con red cloacal, o se
-  infiltra y sale por el **escurrimiento subsuperficial** con pozos absorbentes (por eso
-  los gráficos aclaran que ese escurrimiento viene en parte de los pozos);
+- el **efluente cloacal** sale por la **descarga de planta** con red cloacal, o por el
+  **vertido a pozos absorbentes** con pozos: se infiltra y recarga el acuífero, pero se
+  muestra como salida propia para distinguirlo del escurrimiento subterráneo de la lluvia;
 - el **uso exterior**, lo que queda, no se asigna y termina dentro de la ET.
 
 El aporte desde aguas arriba es solo una entrada: no se suma a ningún escurrimiento.
@@ -93,6 +93,7 @@ Desde la app se edita la cuenca en pantalla y se descarga en TOML o CSV.
 - `balance/validacion.py` — advertencias sobre un caso resuelto
 - `app.py` — interfaz Streamlit
 - `cuencas/` — la cuenca de ejemplo con sus tres casos, con los valores del esquema del apunte
+- `informe.md` — informe de cálculo: ecuación de balance y cómo se obtiene cada componente
 - `CONTEXT.md` — glosario del dominio; `docs/adr/` — decisiones de diseño
 
 ```bash

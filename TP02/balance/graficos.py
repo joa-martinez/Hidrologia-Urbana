@@ -24,6 +24,9 @@ SERIES = {
     "claro": ("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"),
     "oscuro": ("#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"),
 }
+# Fuera de la paleta: el vertido a pozos no entra en los 8 slots. Tono tierra, lejos
+# de los demás, porque es agua que se va al subsuelo.
+TIERRA = {"claro": "#8a5a2b", "oscuro": "#b58150"}
 SUPERFICIE = {"claro": "#fcfcfb", "oscuro": "#1a1a19"}
 TEXTO = {"claro": "#0b0b0b", "oscuro": "#ffffff"}
 TEXTO_SUAVE = {"claro": "#52514e", "oscuro": "#c3c2b7"}
@@ -43,34 +46,23 @@ _ORDEN_COLOR = {
     "escurrimiento_subsuperficial": 5,
     "escurrimiento_subterraneo": 6,
     "descarga_planta": 7,
+    "vertido_pozos": 8,
 }
 
 
 def color_componente(clave: str, modo: Modo = "claro") -> str:
     if clave == "almacenamiento_humedad":
         return NEUTRO[modo]
-    return SERIES[modo][_ORDEN_COLOR[clave]]
+    indice = _ORDEN_COLOR[clave]
+    return SERIES[modo][indice] if indice < len(SERIES[modo]) else TIERRA[modo]
 
 
-def etiqueta(clave: str, resultado: Resultado, corta: bool = False, salto: str = "\n") -> str:
-    """Etiqueta de la componente, aclarando cuando el subsuperficial trae agua de los pozos."""
-    definicion = POR_CLAVE[clave]
-    texto = definicion.corta if corta else definicion.etiqueta
-    if clave == "escurrimiento_subsuperficial" and _de_pozos(resultado):
-        texto += f"{salto}(en parte por pozos absorbentes)"
-    return texto
-
-
-def _de_pozos(resultado: Resultado) -> float:
-    return resultado.flujos_internos.get("vertido_pozos", 0.0)
-
-
-def _nota_pozos(clave: str, resultado: Resultado) -> str:
-    """Para los hover: cuánto del subsuperficial viene de los pozos absorbentes."""
-    pozos = _de_pozos(resultado)
-    if clave != "escurrimiento_subsuperficial" or not pozos:
+def _nota_perdidas(clave: str, resultado: Resultado) -> str:
+    """Para los hover: cuánto del subsuperficial viene de las pérdidas de red."""
+    perdidas = resultado.flujos_internos.get("perdidas_red", 0.0)
+    if clave != "escurrimiento_subsuperficial" or not perdidas:
         return ""
-    return f"<br>{pozos:.1f} mm/año de pozos absorbentes"
+    return f"<br>{perdidas:.1f} mm/año de pérdidas de red"
 
 
 def _maquillar(fig: go.Figure, modo: Modo, titulo: str, leyenda: str = "arriba") -> go.Figure:
@@ -102,19 +94,14 @@ def _maquillar(fig: go.Figure, modo: Modo, titulo: str, leyenda: str = "arriba")
 
 def barras_comparativas(resultados: Sequence[Resultado], modo: Modo = "claro") -> go.Figure:
     """Componentes en el eje X, una barra por caso. Muestra qué cambia entre casos."""
-    # El eje es compartido: si algún caso tiene pozos, la aclaración va en el eje
-    con_pozos = next((r for r in resultados if _de_pozos(r)), None)
-    etiquetas = [
-        etiqueta(d.clave, con_pozos, corta=True, salto="<br>") if con_pozos else d.corta
-        for d in COMPONENTES
-    ]
+    etiquetas = [d.corta for d in COMPONENTES]
     fig = go.Figure()
     for i, resultado in enumerate(resultados):
         fig.add_bar(
             name=resultado.caso.nombre,
             x=etiquetas,
             y=[resultado.valores[d.clave] for d in COMPONENTES],
-            customdata=[_nota_pozos(d.clave, resultado) for d in COMPONENTES],
+            customdata=[_nota_perdidas(d.clave, resultado) for d in COMPONENTES],
             marker_color=SERIES[modo][i % 3],  # casos: slots 1-3, validados para todos los pares
             marker_line=dict(width=2, color=SUPERFICIE[modo]),
             hovertemplate="<b>%{x}</b><br>%{fullData.name}<br>%{y:.1f} mm/año"
@@ -131,7 +118,6 @@ def barras_apiladas(resultados: Sequence[Resultado], modo: Modo = "claro") -> go
         ejes.extend([(resultado.caso.nombre, "Entradas"), (resultado.caso.nombre, "Salidas + ΔS")])
     x = [[e[0] for e in ejes], [e[1] for e in ejes]]
 
-    con_pozos = next((r for r in resultados if _de_pozos(r)), None)
     fig = go.Figure()
     for definicion in COMPONENTES:
         lado = "Entradas" if definicion.signo == "entrada" else "Salidas + ΔS"
@@ -140,11 +126,11 @@ def barras_apiladas(resultados: Sequence[Resultado], modo: Modo = "claro") -> go
         for resultado in resultados:
             valor = resultado.valores[definicion.clave]
             alturas.extend([valor if lado == "Entradas" else 0, valor if lado != "Entradas" else 0])
-            notas.extend([_nota_pozos(definicion.clave, resultado)] * 2)
+            notas.extend([_nota_perdidas(definicion.clave, resultado)] * 2)
         if not any(alturas):
             continue
         fig.add_bar(
-            name=etiqueta(definicion.clave, con_pozos, salto=" ") if con_pozos else definicion.etiqueta,
+            name=definicion.etiqueta,
             x=x,
             y=alturas,
             customdata=notas,
@@ -179,10 +165,7 @@ def sankey(resultado: Resultado, modo: Modo = "claro") -> go.Figure:
         valor = valores[definicion.clave]
         if valor <= 0 or definicion.signo == "almacenamiento":
             continue
-        propio = nodo(
-            etiqueta(definicion.clave, resultado, salto=" "),
-            color_componente(definicion.clave, modo),
-        )
+        propio = nodo(definicion.etiqueta, color_componente(definicion.clave, modo))
         fuentes.append(propio if definicion.signo == "entrada" else 0)
         destinos.append(0 if definicion.signo == "entrada" else propio)
         magnitudes.append(valor)
@@ -232,8 +215,10 @@ _RAMAS_ARRIBA = (
     ("evapotranspiracion", "Evapotrans-\npiración"),
     ("aporte_aguas_arriba", "Filtración desde\naguas arriba"),
 )
+# La descarga de planta y el vertido a pozos nunca van juntos: comparten el lugar.
 _RAMAS_ABAJO = (
     ("descarga_planta", "Descarga planta\ntratamiento cloacal"),
+    ("vertido_pozos", "Vertido a pozos\nabsorbentes"),
     ("escurrimiento_superficial", "Escurrimiento\nsuperficial"),
     ("escurrimiento_subsuperficial", "Escurrimiento\nsubsuperficial"),
     ("escurrimiento_subterraneo", "Escurrimiento\nsubterráneo"),
@@ -306,8 +291,6 @@ def esquema(resultado: Resultado, modo: Modo = "claro") -> Figure:
 
     for i, (clave, rotulo) in enumerate(c for c in _RAMAS_ABAJO if c[0] in abajo):
         centro, w = abajo[clave]
-        if clave == "escurrimiento_subsuperficial" and _de_pozos(resultado):
-            rotulo += f"\n(en parte por pozos\nabsorbentes: {_de_pozos(resultado):.0f})"
         valor = valores[clave]
         alto = -2.4 if i % 2 == 0 else -3.4
         ax.add_patch(_rama(centro, w, 0.0, alto, punta_en="extremo", color=cuerpo))

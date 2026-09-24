@@ -179,8 +179,8 @@ def editar_estado(estado: EstadoUrbanizacion, cierre: str | None) -> EstadoUrban
             "Efluente cloacal (fracción)", min_value=0.0, max_value=1.0,
             value=float(actual.fraccion_efluente_cloacal), step=0.01,
             key=clave_widget(clave, "efluente"),
-            help="Con red cloacal sale por la planta; con pozos absorbentes se infiltra "
-            "y sale por el escurrimiento subsuperficial.",
+            help="Con red cloacal sale por la planta; con pozos absorbentes sale por el "
+            "vertido a pozos, que recarga el acuífero.",
         )
         columnas[2].metric(
             "Uso exterior (lo que queda)", f"{1 - perdidas - efluente:.3f}",
@@ -246,8 +246,8 @@ def editar_componentes(
             with fila[1]:
                 nueva = _widgets_componente(ambito, clave, eleccion, esp, metodos)
             if clave == "escurrimiento_subsuperficial":
-                st.caption("Parte base, solo de la lluvia. En cada caso se le suma lo que "
-                           "se infiltra de la provisión (pérdidas y pozos absorbentes).")
+                st.caption("Parte base, solo de la lluvia. En cada caso se le suman las "
+                           "pérdidas de red, que se infiltran.")
         if nueva is not None:
             componentes[clave] = nueva
     return componentes
@@ -291,7 +291,7 @@ def tabla_componentes(resultado: Resultado) -> pd.DataFrame:
         valor = resultado.valores[definicion.clave]
         filas.append(
             {
-                "Componente": graficos.etiqueta(definicion.clave, resultado, salto=" "),
+                "Componente": definicion.etiqueta,
                 "Tipo": definicion.signo.capitalize(),
                 "mm/año": round(valor, 1),
                 "hm³/año": round(valor / 1000 * resultado.area_km2 * 1e6 / 1e6, 3),
@@ -400,16 +400,11 @@ with comparacion:
 
 with datos:
     st.dataframe(tabla_componentes(resultado), width="stretch", hide_index=True)
-    internos = {
-        "perdidas_red": "pérdidas de red",
-        "vertido_pozos": "vertido a pozos absorbentes",
-    }
-    if resultado.flujos_internos:
+    perdidas = resultado.flujos_internos.get("perdidas_red")
+    if perdidas:
         st.caption(
-            "Se infiltran y salen por el escurrimiento subsuperficial (no son componentes "
-            "del balance): "
-            + ", ".join(f"{internos[k]} {v:.1f} mm/año"
-                        for k, v in resultado.flujos_internos.items())
+            f"Las pérdidas de red ({perdidas:.1f} mm/año) se infiltran y salen por el "
+            "escurrimiento subsuperficial: no son una componente del balance."
         )
     st.subheader("Descargar la cuenca")
     archivo = editada.nombre.lower().replace(" ", "_")

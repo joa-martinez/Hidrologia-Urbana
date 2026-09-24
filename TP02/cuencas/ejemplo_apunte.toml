@@ -61,8 +61,8 @@ fraccion_impermeable = 0.35
 coeficiente_impermeable = 0.55
 coeficiente_permeable = 0.05
 
-# Parte base, solo de la lluvia: ≈ 367 mm del esquema. Lo que se infiltra de la
-# provisión (pérdidas y pozos) se le suma en cada caso.
+# Parte base, solo de la lluvia: ≈ 367 mm del esquema. Las pérdidas de red se le
+# suman en cada caso; lo de los pozos va en su propia salida.
 [estados.post.escurrimiento_subsuperficial]
 metodo = "fraccion_precipitacion"
 fraccion = 0.494

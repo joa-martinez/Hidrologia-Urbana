@@ -93,17 +93,18 @@ def test_sin_componente_de_cierre_se_informa_el_residuo():
     assert any("no cierra" in aviso for aviso in advertencias(resultado))
 
 
-def test_con_pozos_el_efluente_sale_por_el_subsuperficial(cuenca):
+def test_con_pozos_el_efluente_sale_por_los_pozos(cuenca):
     con_red = resolver(cuenca, RED)
     con_pozos = resolver(cuenca, POZOS)
 
     efluente = con_red.valores["descarga_planta"]
     assert efluente == pytest.approx(0.862 * con_red.valores["agua_potable"])
     assert con_pozos.valores["descarga_planta"] == 0
-    assert con_pozos.flujos_internos["vertido_pozos"] == pytest.approx(efluente)
-    assert con_pozos.valores["escurrimiento_subsuperficial"] == pytest.approx(
-        con_red.valores["escurrimiento_subsuperficial"] + efluente
-    )
+    assert con_red.valores["vertido_pozos"] == 0
+    assert con_pozos.valores["vertido_pozos"] == pytest.approx(efluente)
+    # sale por su propia salida: ningún escurrimiento cambia
+    for clave in ("escurrimiento_subsuperficial", "escurrimiento_subterraneo"):
+        assert con_pozos.valores[clave] == pytest.approx(con_red.valores[clave])
     # el mismo efluente cambia de camino: la ET no se entera
     assert con_pozos.valores["evapotranspiracion"] == pytest.approx(
         con_red.valores["evapotranspiracion"]
@@ -219,6 +220,8 @@ def test_una_componente_vieja_avisa_como_se_carga_ahora():
         EstadoUrbanizacion("pre", {"escurrimiento_directo": mm(100)})
     with pytest.raises(ErrorDeCaso, match="fraccion_efluente_cloacal"):
         EstadoUrbanizacion("post", {"vertido_pozos": mm(100)})
+    with pytest.raises(ErrorDeCaso, match="fraccion_efluente_cloacal"):
+        EstadoUrbanizacion("post", {"descarga_planta": mm(100)})
 
 
 def test_un_archivo_de_caso_suelto_explica_el_formato_nuevo():
@@ -234,11 +237,8 @@ def test_un_archivo_de_caso_suelto_explica_el_formato_nuevo():
 _BASE = resolver_todos(leer(EJEMPLO))
 
 
-def _con(resultado, pozos=None, **valores):
-    internos = dict(resultado.flujos_internos)
-    if pozos is not None:
-        internos["vertido_pozos"] = pozos
-    return replace(resultado, valores={**resultado.valores, **valores}, flujos_internos=internos)
+def _con(resultado, **valores):
+    return replace(resultado, valores={**resultado.valores, **valores})
 
 
 ESQUEMAS = {
@@ -252,7 +252,7 @@ ESQUEMAS = {
     ),
     "todo en cero": replace(_BASE[0], valores=dict.fromkeys(_BASE[0].valores, 0.0)),
     "almacenamiento grande": _con(_BASE[0], almacenamiento_humedad=-12345),
-    "pozos grandes": _con(_BASE[2], pozos=98765, escurrimiento_subsuperficial=99000),
+    "pozos grandes": _con(_BASE[2], vertido_pozos=98765),
 }
 
 

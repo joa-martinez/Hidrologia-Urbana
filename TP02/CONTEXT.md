@@ -27,9 +27,10 @@ Cada flujo o variación de almacenamiento que interviene en el **Balance hidrol�
 - Salidas:
   - **Evapotranspiración (ET)**: una sola, incluye la evaporación del sistema de agua potable. Es la más difícil de estimar, así que suele ser la **Componente de cierre**.
   - **Escurrimiento superficial**
-  - **Escurrimiento subsuperficial**: una parte base, que es dato del **Estado de urbanización**, más los flujos internos que se infiltran en la cuenca (**Pérdidas de red de agua potable** y **Vertido a pozos absorbentes**).
-  - **Escurrimiento subterráneo**
+  - **Escurrimiento subsuperficial**: una parte base, que es dato del **Estado de urbanización**, más las **Pérdidas de red de agua potable**, que se infiltran en la cuenca.
+  - **Escurrimiento subterráneo**: dato del **Estado de urbanización**. Viene solo de la lluvia que se infiltra en el suelo permeable; lo que aportan los pozos va aparte.
   - **Descarga de planta cloacal**: solo con **Red cloacal**.
+  - **Vertido a pozos absorbentes**: solo con **Pozo absorbente**.
 - Variación de almacenamiento:
   - **Almacenamiento en humedad del suelo**
 
@@ -54,10 +55,10 @@ _Avoid_: red de desagües (ambiguo con pluvial)
 Fracción de la **Provisión de agua potable** que se fuga de la red, se infiltra y sale por el **Escurrimiento subsuperficial**. Es uno de los destinos del **Reparto de la provisión**. Flujo interno, no es **Componente**: el agua no sale de la cuenca por ahí.
 
 **Pozo absorbente**:
-Alternativa a la **Red cloacal**: los efluentes cloacales se infiltran en el suelo en cada lote, alimentando el flujo subsuperficial.
+Alternativa a la **Red cloacal**: los efluentes cloacales se infiltran en el suelo en cada lote y recargan el acuífero.
 
 **Vertido a pozos absorbentes**:
-Lo que los **Pozos absorbentes** infiltran en el suelo. Flujo interno, no es **Componente**: sale de la cuenca por el **Escurrimiento subsuperficial**, que por eso es mayor con pozos que con **Red cloacal**. Cumple el papel que tiene la **Descarga de planta cloacal** en el caso con red, pero sin sacar el agua de la cuenca directamente.
+Lo que los **Pozos absorbentes** infiltran en el suelo. Es una salida propia, no se carga: sale del **Reparto de la provisión**, igual que la **Descarga de planta cloacal**, cuyo papel cumple en el caso con pozos. Físicamente es agua subterránea, pero se contabiliza aparte del **Escurrimiento subterráneo** para distinguir lo que aportan los pozos de lo que se infiltra de la lluvia.
 
 **Reparto de la provisión**:
 División de la **Provisión de agua potable** en tres destinos: **Pérdidas de red de agua potable**, **Efluente cloacal** y **Uso exterior**. Se cargan las fracciones de los dos primeros (su suma no puede pasar de 1) y el **Uso exterior** es lo que queda. Es dato del **Estado de urbanización** Post, así que es el mismo con **Red cloacal** y con **Pozo absorbente**.
